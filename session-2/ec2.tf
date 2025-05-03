@@ -1,17 +1,24 @@
-resource "aws_instance" "first_ec2" {
+resource "aws_instance" "webserver" {
   ami           = "ami-058a8a5ab36292159"
   instance_type = "t2.micro"
   tags = {
-    Name        = "aws-ec2-instance"
+    Name        = "my-terraform-webserver"
     Environment = "dev"
   }
+  user_data = file("user-data.sh")
 }
 
-resource "aws_security_group" "simple_sg" {
-  name        = "simple-sg"
+resource "aws_security_group" "webserver_sg" {
+  name        = "webserver-sg"
   description = "Allow SSH access"
 
 
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
   ingress {
     from_port   = 22
     to_port     = 22
