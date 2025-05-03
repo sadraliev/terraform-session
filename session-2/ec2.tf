@@ -5,7 +5,8 @@ resource "aws_instance" "webserver" {
     Name        = "my-terraform-webserver"
     Environment = "dev"
   }
-  user_data = file("user-data.sh")
+  user_data              = file("user-data.sh")
+  vpc_security_group_ids = [aws_security_group.webserver_sg.id]
 }
 
 resource "aws_security_group" "webserver_sg" {
