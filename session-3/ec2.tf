@@ -1,8 +1,10 @@
 resource "aws_instance" "webserver" {
-  ami           = "ami-058a8a5ab36292159"
+  ami           = data.aws_ami.amazon_linux_2023.id
   instance_type = var.instance_type
 
-  user_data = file("user-data.sh")
+  user_data = templatefile("${path.module}/user-data.sh", {
+    environment = var.environment,
+  })
 
   vpc_security_group_ids = [aws_security_group.webserver_sg.id]
 
