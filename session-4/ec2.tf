@@ -1,4 +1,4 @@
-resource "aws_instance" "webserver" {
+resource "aws_instance" "public_webserver" {
   count         = length(var.public_cidrs)
   ami           = data.aws_ami.amazon_linux_2023.id
   instance_type = var.instance_type
@@ -10,12 +10,26 @@ resource "aws_instance" "webserver" {
   vpc_security_group_ids = [aws_security_group.webserver_sg.id]
 
   subnet_id = element(aws_subnet.public_subnet.*.id, count.index)
+  key_name  = var.key_name
   tags = {
-    Name        = "${var.environment}-webserver"
+    Name        = "${var.environment}-public-webserver"
     Environment = var.environment
   }
 }
+resource "aws_instance" "private_webserver" {
+  count         = length(var.private_cidrs)
+  ami           = data.aws_ami.amazon_linux_2023.id
+  instance_type = var.instance_type
 
+  vpc_security_group_ids = [aws_security_group.webserver_sg.id]
+
+  subnet_id = element(aws_subnet.private_subnet.*.id, count.index)
+  key_name  = var.key_name
+  tags = {
+    Name        = "${var.environment}-private-webserver"
+    Environment = var.environment
+  }
+}
 resource "aws_security_group" "webserver_sg" {
   name        = "webserver-sg"
   description = "Allow ports ${join(", ", var.ingress_ports)}"
@@ -28,15 +42,13 @@ resource "aws_security_group" "webserver_sg" {
 
 // TODO: Aibek, don't forget to improve this code, you don't need to create a new security group ingress rule for each port, you can create a single rule for all ports
 resource "aws_vpc_security_group_ingress_rule" "allow_tls_ipv4" {
-  for_each = {
-    for i, rule in local.ingress_rules : "${rule.cidr}-${rule.port}" => rule
-  }
+  count             = length(var.ingress_ports)
   security_group_id = aws_security_group.webserver_sg.id
-  cidr_ipv4         = each.value.cidr
-  from_port         = each.value.port
-  to_port           = each.value.port
+  cidr_ipv4         = "0.0.0.0/0"
+  from_port         = var.ingress_ports[count.index]
+  to_port           = var.ingress_ports[count.index]
   ip_protocol       = "tcp"
-  description       = "Allow port ${each.value.port} from ${each.value.cidr}"
+  description       = "Allow port ${element(var.ingress_ports, count.index)} from 0.0.0.0/0"
 }
 
 

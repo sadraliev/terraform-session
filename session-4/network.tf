@@ -89,3 +89,53 @@ resource "aws_route_table_association" "public" {
 # Security Group (allows TCP 80)
 #    ↓
 # Web Server (e.g., Node.js)
+
+resource "aws_eip" "main_eip" {
+  domain = "vpc"
+  tags = {
+    Name        = "${var.environment}-eip"
+    Environment = "${var.environment}"
+  }
+}
+
+resource "aws_nat_gateway" "main_nat" {
+  allocation_id = aws_eip.main_eip.id
+  subnet_id     = element(aws_subnet.public_subnet[*].id, 0)
+  tags = {
+    Name        = "${var.environment}-nat"
+    Environment = "${var.environment}"
+  }
+
+  depends_on = [aws_internet_gateway.main_igw] // TODO: Why is depends_on needed?
+}
+
+resource "aws_subnet" "private_subnet" {
+  count             = length(var.private_cidrs)
+  vpc_id            = aws_vpc.main_vpc.id
+  cidr_block        = element(var.private_cidrs, count.index)
+  availability_zone = element(var.availability_zones, count.index)
+  tags = {
+    Name        = "${var.environment}-${element(var.availability_zones, count.index)}-private-subnet"
+    Environment = "${var.environment}"
+  }
+}
+
+resource "aws_route_table" "private" {
+  vpc_id = aws_vpc.main_vpc.id
+  tags = {
+    Name        = "${var.environment}-private-route-table"
+    Environment = "${var.environment}"
+  }
+}
+
+resource "aws_route" "private_internet_gateway" {
+  route_table_id         = aws_route_table.private.id
+  destination_cidr_block = "0.0.0.0/0"
+  nat_gateway_id         = aws_nat_gateway.main_nat.id
+}
+
+resource "aws_route_table_association" "private" {
+  count          = length(var.private_cidrs)
+  subnet_id      = element(aws_subnet.private_subnet[*].id, count.index)
+  route_table_id = aws_route_table.private.id
+}

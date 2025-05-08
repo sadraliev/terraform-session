@@ -40,14 +40,9 @@ variable "availability_zones" {
   default     = ["us-east-2a", "us-east-2b", "us-east-2c"]
 }
 
-locals {
-  ingress_rules = flatten([
-    for cidr in var.public_cidrs : [
-      for port in var.ingress_ports : {
-        cidr = cidr
-        port = port
-      }
-    ]
-  ])
+variable "key_name" {
+  description = "The name of the key pair to use for the instance"
+  type        = string
+  default     = "sadraliev@mac"
 }
 
