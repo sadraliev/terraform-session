@@ -7,6 +7,7 @@ resource "aws_vpc" "main_vpc" {
   }
 }
 
+// connect the vpc to the internet
 resource "aws_internet_gateway" "main_igw" {
   vpc_id = aws_vpc.main_vpc.id
   tags = {
@@ -15,22 +16,26 @@ resource "aws_internet_gateway" "main_igw" {
   }
 }
 
+// open the public subnets to the internet
 resource "aws_subnet" "public_subnet" {
-  for_each = var.public_subnets
+  count = length(var.public_cidrs)
 
   vpc_id                  = aws_vpc.main_vpc.id
-  cidr_block              = each.value
-  availability_zone       = each.key
+  cidr_block              = element(var.public_cidrs, count.index)
+  availability_zone       = element(var.availability_zones, count.index)
   map_public_ip_on_launch = true
 
 
   tags = {
-    Name        = "${var.environment}-${var.region}-public-subnet"
+    Name        = "${var.environment}-${element(var.availability_zones, count.index)}-public-subnet"
     Environment = "${var.environment}"
   }
 }
 
 
+// create a route table for the public subnets
+//TODO: AWS route tables only control outbound (egress) routing logic ????
+// @Kris, we need to talk about this!
 resource "aws_route_table" "public" {
   vpc_id = aws_vpc.main_vpc.id
   tags = {
@@ -38,13 +43,49 @@ resource "aws_route_table" "public" {
     Environment = "${var.environment}"
   }
 }
+
+// create a route (it is like a rule) in the Public Route Table
+
 resource "aws_route" "public_internet_gateway" {
   route_table_id         = aws_route_table.public.id
-  destination_cidr_block = "0.0.0.0/0"
-  gateway_id             = aws_internet_gateway.main_igw.id
+  destination_cidr_block = "0.0.0.0/0" // send it to the Internet Gateway.
+  // TODO:is the outbound traffic or inbound traffic
+  // TODO: where is the inbound traffic coming from?
+  gateway_id = aws_internet_gateway.main_igw.id
+
 }
+
+// associate the public subnets to THE ROUTE TABLE
 resource "aws_route_table_association" "public" {
-  for_each       = var.public_subnets
-  subnet_id      = aws_subnet.public_subnet[each.key].id
+  count          = length(var.public_cidrs)
+  subnet_id      = element(aws_subnet.public_subnet[*].id, count.index)
   route_table_id = aws_route_table.public.id
 }
+// Security groups & network ACLs = control whether traffic is allowed (i.e., firewall rules)
+
+# Security Groups (SGs):
+# - Attached to EC2 instances, ENIs, or load balancers
+# - Control inbound and outbound rules per port/protocol.
+# - Stateful: if you allow outbound, return inbound is allowed automatically.
+
+# Network ACLs (NACLs):
+# - Attached to subnets.
+# - Also control inbound and outbound, but are stateless.
+# - You must allow traffic both directions explicitly.
+
+
+# User's Browser
+#    ↓
+# Internet
+#    ↓
+# AWS Internet Gateway (IGW) //TODO: HOW ????
+#    ↓
+# Route Table (with 0.0.0.0/0 → IGW)
+#    ↓
+# Public Subnet (e.g., 10.0.1.0/24)
+#    ↓
+# EC2 Instance (with Public IP) 
+#    ↓
+# Security Group (allows TCP 80)
+#    ↓
+# Web Server (e.g., Node.js)
