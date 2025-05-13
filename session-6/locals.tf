@@ -30,7 +30,7 @@ variable "business_unit" {
 
 variable "project_name" {
   type    = string
-  default = "homework#5"
+  default = "hw5"
 }
 
 variable "tier" {
