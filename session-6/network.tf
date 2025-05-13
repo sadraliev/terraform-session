@@ -6,29 +6,47 @@ resource "aws_vpc" "main" {
 resource "aws_subnet" "public_subnet" {
   for_each = {
     for subnet in var.public_subnets :
-    subnet.cidr_block => subnet
+    subnet.availability_zone => subnet
   }
-
   vpc_id                  = aws_vpc.main.id
   cidr_block              = each.value.cidr_block
   availability_zone       = each.value.availability_zone
   map_public_ip_on_launch = true
-
-  tags = merge(local.common_tags, { Name = replace(local.name, "resource", "public-subnet") })
+  tags                    = merge(local.common_tags, { Name = replace(local.name, "resource", "public-subnet") })
 }
 
 resource "aws_subnet" "private_subnet" {
   for_each = {
     for subnet in var.private_subnets :
-    subnet.cidr_block => subnet
+    subnet.availability_zone => subnet
   }
-
   vpc_id                  = aws_vpc.main.id
   cidr_block              = each.value.cidr_block
   availability_zone       = each.value.availability_zone
   map_public_ip_on_launch = false
+  tags                    = merge(local.common_tags, { Name = replace(local.name, "resource", "private-subnet") })
+}
 
-  tags = merge(local.common_tags, { Name = replace(local.name, "resource", "private-subnet") })
+resource "aws_internet_gateway" "igw" {
+  vpc_id = aws_vpc.main.id
+  tags   = merge(local.common_tags, { Name = replace(local.name, "resource", "igw") })
+}
+
+resource "aws_route_table" "public_rt" {
+  vpc_id = aws_vpc.main.id
+  tags   = merge(local.common_tags, { Name = replace(local.name, "resource", "public-rt") })
+}
+
+resource "aws_route" "public_internet_gateway" {
+  route_table_id         = aws_route_table.public_rt.id
+  destination_cidr_block = "0.0.0.0/0"
+  gateway_id             = aws_internet_gateway.igw.id
+}
+
+resource "aws_route_table_association" "public_rt_association" {
+  for_each       = aws_subnet.public_subnet
+  subnet_id      = each.value.id
+  route_table_id = aws_route_table.public_rt.id
 }
 
 output "network_info" {
