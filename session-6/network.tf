@@ -49,6 +49,37 @@ resource "aws_route_table_association" "public_rt_association" {
   route_table_id = aws_route_table.public_rt.id
 }
 
+resource "aws_route_table" "private_rt" {
+  vpc_id = aws_vpc.main.id
+  tags   = merge(local.common_tags, { Name = replace(local.name, "resource", "private-rt") })
+}
+
+
+resource "aws_eip" "nat_eip" {
+  domain     = "vpc"
+  depends_on = [aws_internet_gateway.igw]
+  tags       = merge(local.common_tags, { Name = replace(local.name, "resource", "nat-eip") })
+}
+
+resource "aws_nat_gateway" "nat" {
+  allocation_id = aws_eip.nat_eip.id
+  subnet_id     = aws_subnet.public_subnet["us-east-2a"].id
+  tags          = merge(local.common_tags, { Name = replace(local.name, "resource", "nat"), AvailabilityZone = "us-east-2a" })
+}
+
+resource "aws_route" "private_nat_gateway" {
+  route_table_id         = aws_route_table.private_rt.id
+  destination_cidr_block = "0.0.0.0/0"
+  nat_gateway_id         = aws_nat_gateway.nat.id
+}
+
+resource "aws_route_table_association" "private_rt_association" {
+  for_each       = aws_subnet.private_subnet
+  subnet_id      = each.value.id
+  route_table_id = aws_route_table.private_rt.id
+}
+
+
 output "network_info" {
   value = {
     vpc_id             = aws_vpc.main.id
