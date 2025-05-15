@@ -7,6 +7,7 @@ resource "aws_launch_template" "instance" {
   network_interfaces {
     security_groups             = var.asg_config.launch_template.network_interfaces.security_groups
     associate_public_ip_address = var.asg_config.launch_template.network_interfaces.associate_public_ip_address
+    subnet_id                   = var.asg_config.launch_template.network_interfaces.subnet_id
   }
 
   user_data = base64encode(var.asg_config.launch_template.user_data)

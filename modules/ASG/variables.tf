@@ -7,6 +7,7 @@ variable "asg_config" {
       network_interfaces = object({
         security_groups             = list(string)
         associate_public_ip_address = bool
+        subnet_id                   = string
       })
       user_data = string
     })

@@ -106,7 +106,7 @@ module "alb" {
       internal           = false
       load_balancer_type = "application"
       subnets            = module.vpc.public_subnet_ids
-      security_groups    = [module.sg_vpc.security_group_id]
+      security_groups    = [module.sg_alb.security_group_id]
     }
     target_group = {
       name     = replace(local.name, "rtype", "alb-tg")
@@ -137,6 +137,7 @@ module "asg" {
       network_interfaces = {
         security_groups             = [module.sg_ec2.security_group_id]
         associate_public_ip_address = false
+        subnet_id                   = module.vpc.private_subnet_ids[0]
       }
       user_data = file("user-data.sh")
     }

@@ -11,10 +11,11 @@ resource "aws_lb" "alb" {
 # target group
 resource "aws_lb_target_group" "alb_tg" {
   # only alphanumeric and hyphen. Length must be less than 32
-  name     = trim(substr(var.alb_config.target_group.name, 0, 32), "-")
-  port     = var.alb_config.target_group.port
-  protocol = var.alb_config.target_group.protocol
-  vpc_id   = var.alb_config.target_group.vpc_id
+  name        = trim(substr(var.alb_config.target_group.name, 0, 32), "-")
+  port        = var.alb_config.target_group.port
+  protocol    = var.alb_config.target_group.protocol
+  vpc_id      = var.alb_config.target_group.vpc_id
+  target_type = "instance"
 
   health_check {
     path                = var.alb_config.target_group.health_check.path
