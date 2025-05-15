@@ -13,7 +13,7 @@ resource "aws_security_group_rule" "ingress" {
   from_port         = each.value.port
   to_port           = each.value.port
   protocol          = "tcp"
-  cidr_blocks       = [each.value.cidr]
+  cidr_blocks       = [each.value.cidr] // TODO: Why I should use cidr_blocks instead of source_security_group_id?
   security_group_id = aws_security_group.main.id
 }
 

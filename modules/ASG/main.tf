@@ -1,21 +1,16 @@
-resource "aws_launch_template" "app" {
-  name_prefix   = var.asg_config.lt.name_prefix
-  image_id      = var.asg_config.lt.image_id
-  instance_type = var.asg_config.lt.instance_type
-
-  user_data = filebase64("user-data.sh")
+# launch template
+resource "aws_launch_template" "instance" {
+  name_prefix   = var.asg_config.launch_template.name_prefix
+  image_id      = var.asg_config.launch_template.image_id
+  instance_type = var.asg_config.launch_template.instance_type
 
   network_interfaces {
-    associate_public_ip_address = false
-    security_groups             = var.asg_config.lt.security_group_ids
+    security_groups             = var.asg_config.launch_template.network_interfaces.security_groups
+    associate_public_ip_address = var.asg_config.launch_template.network_interfaces.associate_public_ip_address
   }
 
-  tag_specifications {
-    resource_type = "instance"
-    tags          = var.asg_config.lt.tags
-  }
+  user_data = base64encode(var.asg_config.launch_template.user_data)
 }
-
 
 
 resource "aws_autoscaling_group" "asg" {
@@ -26,7 +21,7 @@ resource "aws_autoscaling_group" "asg" {
   vpc_zone_identifier = var.asg_config.asg.vpc_zone_identifier
 
   launch_template {
-    id      = aws_launch_template.app.id
+    id      = aws_launch_template.instance.id
     version = "$Latest"
   }
 

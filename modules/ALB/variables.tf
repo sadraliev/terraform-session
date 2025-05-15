@@ -7,7 +7,7 @@ variable "alb_config" {
       subnets            = list(string)
       security_groups    = list(string)
     })
-    taget_group = object({
+    target_group = object({
       name     = string
       port     = number
       protocol = string
@@ -25,30 +25,4 @@ variable "alb_config" {
       protocol = string
     })
   })
-  default = {
-    alb = {
-      name               = "dev-alb"
-      internal           = false
-      load_balancer_type = "application"
-      subnets            = []
-      security_groups    = []
-    }
-    target_group = {
-      name     = "dev-alb-tg"
-      port     = 80
-      protocol = "HTTP",
-      vpc_id   = ""
-      health_check = {
-        path                = "/"
-        interval            = 30
-        timeout             = 5
-        healthy_threshold   = 2
-        unhealthy_threshold = 2
-      }
-    }
-    listener = {
-      port     = 80
-      protocol = "HTTP"
-    }
-  }
 }

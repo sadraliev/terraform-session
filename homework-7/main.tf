@@ -57,48 +57,116 @@ module "vpc" {
     ]
   }
 }
-
 module "sg_vpc" {
   source = "../modules/SG"
 
   sg_config = {
     name          = replace(local.name, "rtype", "vpc-sg")
     environment   = local.common_tags.Environment
-    description   = "Security group for ${local.name}"
+    description   = "Allow SSH, HTTP and HTTPS traffic"
     vpc_id        = module.vpc.vpc_id
-    ingress_ports = [22, 80, 443]
-    ingress_cidrs = ["10.0.1.0/24"]
+    ingress_ports = [80, 443]
+    ingress_cidrs = ["0.0.0.0/0"]
     tags          = merge(local.common_tags, { Name = replace(local.name, "rtype", "sg") })
   }
 }
 
-# module "instance" {
-#   source                 = "../../modules/ec2"
-#   ami                    = data.aws_ami.amazon_linux_2023.id
-#   instance_type          = "t2.micro"
-#   environment            = "dev"
-#   vpc_security_group_ids = [module.sg.security_group_id]
+module "sg_alb" {
+  source = "../modules/SG"
 
-# }
+  sg_config = {
+    name          = replace(local.name, "rtype", "alb-sg")
+    environment   = local.common_tags.Environment
+    description   = "Allow HTTP and HTTPS traffic"
+    vpc_id        = module.vpc.vpc_id
+    ingress_ports = [80, 443]
+    ingress_cidrs = ["0.0.0.0/0"]
+    tags          = merge(local.common_tags, { Name = replace(local.name, "rtype", "sg") })
+  }
+}
 
+module "sg_ec2" {
+  source = "../modules/SG"
 
-# // fetch amazon linux 2023 ami id
-# data "aws_ami" "amazon_linux_2023" {
-#   most_recent = true
-#   owners      = ["amazon"]
+  sg_config = {
+    name          = replace(local.name, "rtype", "ec2-sg")
+    environment   = local.common_tags.Environment
+    description   = "Allow HTTP traffic from ALB"
+    vpc_id        = module.vpc.vpc_id
+    ingress_ports = [80]
+    ingress_cidrs = ["0.0.0.0/0"]
+    tags          = merge(local.common_tags, { Name = replace(local.name, "rtype", "sg") })
+  }
+}
+module "alb" {
+  source = "../modules/ALB"
+  alb_config = {
+    alb = {
+      name               = replace(local.name, "rtype", "alb")
+      internal           = false
+      load_balancer_type = "application"
+      subnets            = module.vpc.public_subnet_ids
+      security_groups    = [module.sg_vpc.security_group_id]
+    }
+    target_group = {
+      name     = replace(local.name, "rtype", "alb-tg")
+      port     = 80
+      protocol = "HTTP"
+      vpc_id   = module.vpc.vpc_id
+      health_check = {
+        path                = "/"
+        interval            = 30
+        timeout             = 10
+        healthy_threshold   = 2
+        unhealthy_threshold = 2
+      }
+    }
+    listener = {
+      port     = 80
+      protocol = "HTTP"
+    }
+  }
+}
+module "asg" {
+  source = "../modules/ASG"
+  asg_config = {
+    launch_template = {
+      name_prefix   = "app"
+      image_id      = data.aws_ami.amazon_linux_2023.id
+      instance_type = "t2.micro"
+      network_interfaces = {
+        security_groups             = [module.sg_ec2.security_group_id]
+        associate_public_ip_address = false
+      }
+      user_data = file("user-data.sh")
+    }
+    asg = {
+      name                = replace(local.name, "rtype", "asg")
+      vpc_zone_identifier = module.vpc.private_subnet_ids
+      target_group_arns   = [module.alb.target_group_arn]
+      desired_capacity    = 2
+      max_size            = 3
+      min_size            = 1
+    }
+  }
+}
 
-#   filter {
-#     name   = "name"
-#     values = ["al2023-ami-2023.7.*"]
-#   }
+data "aws_ami" "amazon_linux_2023" {
+  most_recent = true
+  owners      = ["amazon"]
 
-#   filter {
-#     name   = "architecture"
-#     values = ["x86_64"]
-#   }
+  filter {
+    name   = "name"
+    values = ["al2023-ami-2023.7.*"]
+  }
 
-#   filter {
-#     name   = "virtualization-type"
-#     values = ["hvm"]
-#   }
-# }
+  filter {
+    name   = "architecture"
+    values = ["x86_64"]
+  }
+
+  filter {
+    name   = "virtualization-type"
+    values = ["hvm"]
+  }
+}
