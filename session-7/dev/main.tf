@@ -1,5 +1,5 @@
 module "sg" {
-  source = "../../modules/sg"
+  source = "../modules/sg"
 
   name          = "dev-instance-sg"
   description   = "Security group for dev instance"
