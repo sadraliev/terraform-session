@@ -31,10 +31,37 @@ resource "aws_lb_listener" "alb_listener" {
   load_balancer_arn = aws_lb.alb.arn
   port              = var.alb_config.listener.port
   protocol          = var.alb_config.listener.protocol
+  certificate_arn   = var.alb_config.listener.certificate_arn
+  ssl_policy        = var.alb_config.listener.ssl_policy
 
   default_action {
     type             = "forward"
     target_group_arn = aws_lb_target_group.alb_tg.arn
   }
+
 }
 
+# How to create a target group
+# 1. Create a target group
+# 2. choose the "instance" type
+# 3. crate a name
+# 4. choose the protocol (HTTP or HTTPS)
+# 5. choose the port (80 or 443)
+# 6. choose the vpc id
+# 7. choose the health check:
+# - path = /
+# - interval = 30 seconds 
+# - timeout = 10 seconds
+# - healthy threshold = 2
+# - unhealthy threshold = 2
+
+
+# Create ALB
+# 1. create a name
+# 2. choose the "internet-facing" type
+# 3. 
+# 3. choose the security group
+# 4. choose the subnets
+# 5. create a load balancer
+# 6. create a target group
+# 7. create a listener

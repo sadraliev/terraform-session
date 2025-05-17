@@ -21,8 +21,10 @@ variable "alb_config" {
       })
     })
     listener = object({
-      port     = number
-      protocol = string
+      port            = number
+      protocol        = string
+      certificate_arn = string
+      ssl_policy      = string
     })
   })
 }

@@ -21,5 +21,18 @@ variable "vpc_security_group_ids" {
   description = "The security group IDs to associate with the instance"
   type        = list(string)
   default     = []
-
+}
+variable "tags" {
+  description = "The tags to apply to the instance"
+  type        = map(string)
+  default     = {}
+}
+variable "availability_zone" {
+  description = "The availability zone to launch the instance in"
+  type        = string
+}
+variable "user_data" {
+  description = "The user data to pass to the instance"
+  type        = string
+  default     = ""
 }

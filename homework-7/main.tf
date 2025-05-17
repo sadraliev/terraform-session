@@ -98,6 +98,14 @@ module "sg_ec2" {
     tags          = merge(local.common_tags, { Name = replace(local.name, "rtype", "sg") })
   }
 }
+module "route53" {
+  source            = "../modules/ROUTE53"
+  domain_name       = "chypalak.com"
+  validation_method = "DNS"
+  tags              = local.common_tags
+  alb_dns_name      = module.alb.dns_name
+  alb_zone_id       = module.alb.zone_id
+}
 module "alb" {
   source = "../modules/ALB"
   alb_config = {
@@ -122,8 +130,10 @@ module "alb" {
       }
     }
     listener = {
-      port     = 80
-      protocol = "HTTP"
+      port            = 443
+      protocol        = "HTTPS"
+      ssl_policy      = "ELBSecurityPolicy-TLS13-1-2-2021-06"
+      certificate_arn = module.route53.certificate_arn
     }
   }
 }
@@ -171,3 +181,7 @@ data "aws_ami" "amazon_linux_2023" {
     values = ["hvm"]
   }
 }
+data "aws_availability_zones" "available" {
+  state = "available"
+}
+
